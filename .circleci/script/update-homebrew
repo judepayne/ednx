@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+VERSION=${CIRCLE_TAG}
+REPO_URL="https://github.com/judepayne/ednx"
+HOMEBREW_REPO="https://github.com/judepayne/homebrew-tap.git"
+
+echo "Updating Homebrew formula for version $VERSION"
+
+# Store token before unsetting GITHUB_TOKEN (to avoid conflicts)
+TOKEN="${GITHUB_TOKEN}"
+unset GITHUB_TOKEN
+
+# Clone homebrew tap repository using token authentication
+git clone https://${TOKEN}@github.com/judepayne/homebrew-tap.git /tmp/homebrew-tap
+cd /tmp/homebrew-tap
+
+# Configure git
+git config user.name "CircleCI"
+git config user.email "jude@judep.org"
+
+# Download release assets to calculate SHA256
+MACOS_ARM64_URL="$REPO_URL/releases/download/$VERSION/ednx-macos-arm64.zip"
+LINUX_ARM64_URL="$REPO_URL/releases/download/$VERSION/ednx-linux-arm64.zip"
+LINUX_AMD64_URL="$REPO_URL/releases/download/$VERSION/ednx-linux-amd64.zip"
+
+# Calculate SHA256 hashes
+echo "Calculating SHA256 hashes..."
+MACOS_ARM64_SHA=$(curl -sL "$MACOS_ARM64_URL" | sha256sum | cut -d' ' -f1)
+LINUX_ARM64_SHA=$(curl -sL "$LINUX_ARM64_URL" | sha256sum | cut -d' ' -f1)
+LINUX_AMD64_SHA=$(curl -sL "$LINUX_AMD64_URL" | sha256sum | cut -d' ' -f1)
+
+# Update the formula
+cat > Formula/ednx.rb << EOF
+class Ednx < Formula
+  desc "Go library and CLI tool for converting between EDN and JSON formats"
+  homepage "https://github.com/judepayne/ednx"
+  version "$VERSION"
+  
+  if OS.mac? && Hardware::CPU.arm?
+    url "$MACOS_ARM64_URL"
+    sha256 "$MACOS_ARM64_SHA"
+  elsif OS.linux? && Hardware::CPU.arm?
+    url "$LINUX_ARM64_URL"
+    sha256 "$LINUX_ARM64_SHA"
+  elsif OS.linux? && Hardware::CPU.intel?
+    url "$LINUX_AMD64_URL"
+    sha256 "$LINUX_AMD64_SHA"
+  end
+
+  def install
+    bin.install "ednx"
+  end
+
+  test do
+    system "#{bin}/ednx", "-j", "<<< '{:test true}'"
+  end
+end
+EOF
+
+# Commit and push changes
+git add Formula/ednx.rb
+git commit -m "Update ednx to version $VERSION"
+git push origin main
+
+echo "Homebrew formula updated successfully!"

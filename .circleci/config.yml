@@ -202,6 +202,31 @@ jobs:
             gh release upload "$VERSION" /tmp/artifacts/*.zip \
               --repo judepayne/ednx
 
+  update-homebrew:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Install jq
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y jq
+      - run:
+          name: Update Homebrew Formula
+          command: |
+            .circleci/script/update-homebrew
+
+  update-scoop:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: Update Scoop Bucket
+          command: |
+            .circleci/script/update-scoop
+
 workflows:
   test-and-release:
     jobs:
@@ -256,6 +281,22 @@ workflows:
             - build-linux-arm64
             - build-windows-amd64
             - build-windows-arm64
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+      - update-homebrew:
+          requires:
+            - release
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+      - update-scoop:
+          requires:
+            - release
           filters:
             tags:
               only: /.*/

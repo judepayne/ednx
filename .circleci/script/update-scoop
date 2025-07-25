@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+VERSION=${CIRCLE_TAG}
+REPO_URL="https://github.com/judepayne/ednx"
+SCOOP_REPO="https://github.com/judepayne/scoop-judepayne.git"
+
+echo "Updating Scoop bucket for version $VERSION"
+
+# Store token before unsetting GITHUB_TOKEN (to avoid conflicts)
+TOKEN="${GITHUB_TOKEN}"
+unset GITHUB_TOKEN
+
+# Clone scoop bucket repository using token authentication
+git clone https://${TOKEN}@github.com/judepayne/scoop-judepayne.git /tmp/scoop-judepayne
+cd /tmp/scoop-judepayne
+
+# Configure git
+git config user.name "CircleCI"
+git config user.email "jude@judep.org"
+
+# Calculate SHA256 for Windows AMD64 binary
+WINDOWS_AMD64_ZIP_URL="$REPO_URL/releases/download/$VERSION/ednx-windows-amd64.zip"
+echo "Calculating SHA256 for Windows AMD64 binary..."
+WINDOWS_AMD64_SHA256=$(curl -sL "$WINDOWS_AMD64_ZIP_URL" | sha256sum | cut -d' ' -f1)
+
+# Update the manifest
+cat > bucket/ednx.json << EOF
+{
+    "version": "$VERSION",
+    "description": "Go library and CLI tool for converting between EDN and JSON formats",
+    "homepage": "https://github.com/judepayne/ednx",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "$WINDOWS_AMD64_ZIP_URL",
+            "hash": "sha256:$WINDOWS_AMD64_SHA256",
+            "bin": "ednx.exe"
+        }
+    },
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/judepayne/ednx/releases/download/\$version/ednx-\$version-windows-amd64.zip"
+            }
+        }
+    }
+}
+EOF
+
+# Commit and push changes
+git add bucket/ednx.json
+git commit -m "Update ednx to version $VERSION"
+git push origin main
+
+echo "Scoop bucket updated successfully!"
