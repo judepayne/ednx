@@ -1,0 +1,257 @@
+version: 2.1
+
+orbs:
+  win: circleci/windows@5.0
+
+jobs:
+  test:
+    docker:
+      - image: cimg/go:1.24
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Download dependencies
+          command: go mod download
+      - run:
+          name: Run tests
+          command: go test ./...
+
+  build-macos-arm64:
+    macos:
+      xcode: "15.3.0"
+    environment:
+      GOOS: darwin
+      GOARCH: arm64
+      BINARY_NAME: ednx
+    steps:
+      - checkout
+      - run:
+          name: Install Go
+          command: |
+            if ! command -v go &> /dev/null; then
+              curl -sL https://go.dev/dl/go1.24.5.darwin-arm64.tar.gz | sudo tar -C /usr/local -xzf -
+              echo 'export PATH=$PATH:/usr/local/go/bin' >> $BASH_ENV
+            fi
+      - run:
+          name: Build binary
+          command: |
+            mkdir -p bin
+            go build -o bin/ednx ./cmd
+      - run:
+          name: Create release archive
+          command: |
+            cd bin
+            zip ednx-macos-arm64.zip ednx
+      - persist_to_workspace:
+          root: bin
+          paths:
+            - ednx-macos-arm64.zip
+
+  build-linux-amd64:
+    docker:
+      - image: cimg/go:1.24
+    environment:
+      GOOS: linux
+      GOARCH: amd64
+      BINARY_NAME: ednx
+    steps:
+      - checkout
+      - run:
+          name: Build binary
+          command: |
+            mkdir -p bin
+            go build -o bin/ednx ./cmd
+      - run:
+          name: Create release archive
+          command: |
+            cd bin
+            zip ednx-linux-amd64.zip ednx
+      - persist_to_workspace:
+          root: bin
+          paths:
+            - ednx-linux-amd64.zip
+
+  build-linux-arm64:
+    docker:
+      - image: cimg/go:1.24
+    environment:
+      GOOS: linux
+      GOARCH: arm64
+      BINARY_NAME: ednx
+    steps:
+      - checkout
+      - run:
+          name: Build binary
+          command: |
+            mkdir -p bin
+            go build -o bin/ednx ./cmd
+      - run:
+          name: Create release archive
+          command: |
+            cd bin
+            zip ednx-linux-arm64.zip ednx
+      - persist_to_workspace:
+          root: bin
+          paths:
+            - ednx-linux-arm64.zip
+
+  build-windows-amd64:
+    executor:
+      name: win/default
+      shell: powershell.exe
+    environment:
+      GOOS: windows
+      GOARCH: amd64
+      BINARY_NAME: ednx.exe
+    steps:
+      - checkout
+      - run:
+          name: Install Go
+          command: |
+            if (!(Get-Command go -ErrorAction SilentlyContinue)) {
+              Write-Host "Installing Go..."
+              Invoke-WebRequest -Uri "https://go.dev/dl/go1.24.5.windows-amd64.zip" -OutFile "go.zip"
+              Expand-Archive go.zip C:\
+              $env:PATH += ";C:\go\bin"
+              [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [EnvironmentVariableTarget]::Process)
+            }
+      - run:
+          name: Build binary
+          command: |
+            mkdir bin
+            go build -o bin/ednx.exe ./cmd
+      - run:
+          name: Create release archive
+          command: |
+            cd bin
+            Compress-Archive -Path ednx.exe -DestinationPath ednx-windows-amd64.zip
+      - persist_to_workspace:
+          root: bin
+          paths:
+            - ednx-windows-amd64.zip
+
+  build-windows-arm64:
+    executor:
+      name: win/default
+      shell: powershell.exe
+    environment:
+      GOOS: windows
+      GOARCH: arm64
+      BINARY_NAME: ednx.exe
+    steps:
+      - checkout
+      - run:
+          name: Install Go
+          command: |
+            if (!(Get-Command go -ErrorAction SilentlyContinue)) {
+              Write-Host "Installing Go..."
+              Invoke-WebRequest -Uri "https://go.dev/dl/go1.24.5.windows-amd64.zip" -OutFile "go.zip"
+              Expand-Archive go.zip C:\
+              $env:PATH += ";C:\go\bin"
+              [Environment]::SetEnvironmentVariable("PATH", $env:PATH, [EnvironmentVariableTarget]::Process)
+            }
+      - run:
+          name: Build binary
+          command: |
+            mkdir bin
+            go build -o bin/ednx.exe ./cmd
+      - run:
+          name: Create release archive
+          command: |
+            cd bin
+            Compress-Archive -Path ednx.exe -DestinationPath ednx-windows-arm64.zip
+      - persist_to_workspace:
+          root: bin
+          paths:
+            - ednx-windows-arm64.zip
+
+  release:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/artifacts
+      - run:
+          name: Install GitHub CLI
+          command: |
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update
+            sudo apt install gh
+      - run:
+          name: Create GitHub Release
+          command: |
+            VERSION=${CIRCLE_TAG}
+            echo "Creating release for version: $VERSION"
+            
+            # Create the release
+            gh release create "$VERSION" \
+              --title "Release $VERSION" \
+              --notes "Release $VERSION" \
+              --repo judepayne/ednx
+            
+            # Upload all artifacts
+            gh release upload "$VERSION" /tmp/artifacts/*.zip \
+              --repo judepayne/ednx
+
+workflows:
+  test-and-release:
+    jobs:
+      - test:
+          filters:
+            tags:
+              only: /.*/
+      - build-macos-arm64:
+          requires:
+            - test
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+      - build-linux-amd64:
+          requires:
+            - test
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+      - build-linux-arm64:
+          requires:
+            - test
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+      - build-windows-amd64:
+          requires:
+            - test
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+      - build-windows-arm64:
+          requires:
+            - test
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+      - release:
+          requires:
+            - build-macos-arm64
+            - build-linux-amd64
+            - build-linux-arm64
+            - build-windows-amd64
+            - build-windows-arm64
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
