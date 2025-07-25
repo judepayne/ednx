@@ -183,7 +183,9 @@ jobs:
       - run:
           name: Authenticate GitHub CLI with fine-grained token
           command: |
-            echo "${GITHUB_TOKEN}" | gh auth login -p https --with-token
+            TOKEN="${GITHUB_TOKEN}"
+            unset GITHUB_TOKEN
+            echo "${TOKEN}" | gh auth login -p https --with-token
       - run:
           name: Create GitHub Release
           command: |
