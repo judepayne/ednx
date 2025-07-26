@@ -9,6 +9,19 @@ import (
 	"github.com/judepayne/ednx/ednx"
 )
 
+func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "ednx - Convert between EDN and JSON formats\n")
+		fmt.Fprintf(os.Stderr, "\nUsage: %s [options] [file/ stdin]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "\nOptions:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nExamples:\n")
+		fmt.Fprintf(os.Stderr, "  %s -e < input.json\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -j < input.edn\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -e -p -k input.json\n", os.Args[0])
+	}
+}
+
 func main() {
 	// flags:
 	// -e to edn
@@ -17,8 +30,8 @@ func main() {
 	// -k keywordize keys. must be used with -e
 	// -width widthLimit. must be used with -e and -p
 
-	ednPtr := flag.Bool("e", false, "Convert to Edn")
-	jsonPtr := flag.Bool("j", false, "Convert to Json")
+	ednPtr := flag.Bool("e", false, "Convert Json to Edn")
+	jsonPtr := flag.Bool("j", false, "Convert Edn to Json")
 	prettyPtr := flag.Bool("p", false, "Prettify Edn/Json")
 	keywordPtr := flag.Bool("k", false, "Keywordize Edn keys")
 	widthPtr := flag.Int("width", 80, "Character width limit for prettifying Edn")

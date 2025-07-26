@@ -58,3 +58,14 @@ ednx -e -p -k < input.json
 - Keywordization of map keys for EDN
 - Handles nested data structures
 - Clean, library-first API
+
+## Unsupported EDN Features
+
+- Sets: #{} - No JSON equivalent, would need special handling
+- Lists: () - Treated as vectors [] in conversion
+- Symbols: symbol - No JSON equivalent
+- Tagged literals: #inst "2023-01-01", #uuid "..." - Custom data types
+- Comments: ;; comment - Stripped during parsing
+- Metadata: ^{:meta true} [1 2 3] - Not preserved
+- Reader macros: #_discard, ^metadata - Advanced EDN features
+- Namespaced keywords: ::ns/keyword or :ns/keyword - May not convert properly
