@@ -2,6 +2,27 @@
 
 A Go library for converting between EDN (Extensible Data Notation) and JSON formats, with an optional CLI tool.
 
+## CLI Installation
+
+### Homebrew (macOS/Linux)
+```bash
+brew install judepayne/tap/ednx
+```
+
+### Scoop (Windows)
+```bash
+scoop bucket add judepayne https://github.com/judepayne/scoop-judepayne
+scoop install ednx
+```
+
+### Go Install
+```bash
+go install github.com/judepayne/ednx/cmd@latest
+```
+
+### Direct Download
+Download binaries from [GitHub Releases](https://github.com/judepayne/ednx/releases)
+
 ## Library Usage
 
 ```bash
