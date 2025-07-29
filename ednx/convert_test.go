@@ -64,3 +64,34 @@ func TestJsonToEdnRoundTrip(t *testing.T) {
 		t.Errorf("Round-trip failed for containers.json")
 	}
 }
+
+func TestNilOptionsHandling(t *testing.T) {
+	// Test JsonToEdn with nil options
+	jsonData := []byte(`{"key": "value", "number": 42}`)
+	
+	ednResult, err := JsonToEdn(jsonData, nil)
+	if err != nil {
+		t.Fatalf("JsonToEdn with nil options failed: %v", err)
+	}
+	if len(ednResult) == 0 {
+		t.Error("JsonToEdn with nil options returned empty result")
+	}
+	
+	// Test EdnToJson with nil options
+	jsonResult, err := EdnToJson(ednResult, nil)
+	if err != nil {
+		t.Fatalf("EdnToJson with nil options failed: %v", err)
+	}
+	if len(jsonResult) == 0 {
+		t.Error("EdnToJson with nil options returned empty result")
+	}
+	
+	// Verify round-trip works with nil options
+	var original, result map[string]interface{}
+	json.Unmarshal(jsonData, &original)
+	json.Unmarshal(jsonResult, &result)
+	
+	if !reflect.DeepEqual(original, result) {
+		t.Error("Round-trip with nil options failed to preserve data")
+	}
+}

@@ -1,0 +1,115 @@
+[
+  {
+    "vars": {
+      "d2-config": {
+        "layout-engine": "elk",
+        "theme-id": "300"
+      }
+    }
+  },
+  [
+    "network",
+    [
+      "cell tower",
+      [
+        "satellites",
+        {
+          "shape": "stored_data",
+          "style.multiple": "true"
+        }
+      ],
+      [
+        "transmitter"
+      ],
+      [
+        "satellites",
+        "-\u003e",
+        "transmitter",
+        "send"
+      ],
+      [
+        "satellites",
+        "-\u003e",
+        "transmitter",
+        "send"
+      ],
+      [
+        "satellites",
+        "-\u003e",
+        "transmitter",
+        "send"
+      ]
+    ],
+    [
+      "online portal",
+      [
+        "ui",
+        {
+          "shape": "hexagon"
+        }
+      ]
+    ],
+    [
+      "data processor",
+      [
+        "storage",
+        {
+          "shape": "cylinder",
+          "style.multiple": "true"
+        }
+      ]
+    ],
+    [
+      "cell tower.transmitter",
+      "-\u003e",
+      "data processor.storage",
+      "phone logs"
+    ]
+  ],
+  [
+    "user",
+    {
+      "shape": "person",
+      "width": "130"
+    }
+  ],
+  [
+    "user",
+    "-\u003e",
+    "network.cell tower",
+    "make call"
+  ],
+  [
+    "user",
+    "-\u003e",
+    "network.online portal.ui",
+    "access",
+    {
+      "style.stroke-dash": "3"
+    }
+  ],
+  [
+    "api server",
+    "-\u003e",
+    "network.online portal.ui",
+    "display"
+  ],
+  [
+    "api server",
+    "-\u003e",
+    "logs",
+    "persist"
+  ],
+  [
+    "logs",
+    {
+      "shape": "page",
+      "style.multiple": "true"
+    }
+  ],
+  [
+    "network.data processor",
+    "-\u003e",
+    "api server"
+  ]
+]

@@ -19,7 +19,13 @@ func removeEdnEscaping(data []byte) []byte {
 
 // JsonToEdn converts JSON data to EDN format with configurable options.
 // If the WidthLimit is omitted, it defaults to 80 characters.
+// If opts is nil, default options are used.
 func JsonToEdn(data []byte, opts *EdnConvertOptions) ([]byte, error) {
+	// Handle nil options by creating default options
+	if opts == nil {
+		opts = &EdnConvertOptions{}
+	}
+	
 	var v any
 	if err := json.Unmarshal(data, &v); err != nil {
 		return nil, ErrJsonUnmarshal
@@ -49,6 +55,11 @@ func JsonToEdn(data []byte, opts *EdnConvertOptions) ([]byte, error) {
 
 // convertToEdnValue recursively converts JSON values to EDN values
 func convertToEdnValue(v any, opts *EdnConvertOptions) any {
+	// Handle nil options by creating default options
+	if opts == nil {
+		opts = &EdnConvertOptions{}
+	}
+	
 	switch val := v.(type) {
 	case map[string]any:
 		ednMap := make(map[any]any)
@@ -135,7 +146,7 @@ func prettifyEdn(value any, currentIndent int, widthLimit int) ([]byte, error) {
 		return buf.Bytes(), nil
 
 	case map[any]any:
-		// Try single line first
+		// Collect all key-value pairs with consistent formatting
 		pairs := make([]string, 0, len(val))
 		totalLen := 2 // for braces {}
 
@@ -144,7 +155,7 @@ func prettifyEdn(value any, currentIndent int, widthLimit int) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			valueBytes, err := edn.Marshal(v)
+			valueBytes, err := prettifyEdn(v, currentIndent+1, widthLimit)
 			if err != nil {
 				return nil, err
 			}
@@ -162,53 +173,16 @@ func prettifyEdn(value any, currentIndent int, widthLimit int) ([]byte, error) {
 			return []byte(singleLine), nil
 		}
 
-		// Multi-line format
+		// Multi-line format - use same consistent formatting as single-line
 		var buf bytes.Buffer
 		buf.WriteString("{")
-		first := true
-		for k, v := range val {
-			keyBytes, err := edn.Marshal(k)
-			if err != nil {
-				return nil, err
-			}
-			keyStr := string(keyBytes)
-
-			// Try to fit key + value on same line first
-			valueBytes, err := prettifyEdn(v, currentIndent+len(keyStr)+2, widthLimit)
-			if err != nil {
-				return nil, err
-			}
-
-			// Check if key + " " + value fits on current line
-			lineLength := len(keyStr) + 1 + len(valueBytes)
-			if currentIndent+1+lineLength <= widthLimit {
-				// Fits on same line
-				if first {
-					buf.WriteString(keyStr + " ")
-					buf.Write(valueBytes)
-				} else {
-					buf.WriteString(",\n" + strings.Repeat(" ", currentIndent+1))
-					buf.WriteString(keyStr + " ")
-					buf.Write(valueBytes)
-				}
+		for i, pair := range pairs {
+			if i == 0 {
+				buf.WriteString(pair)
 			} else {
-				// Value too long, put on next line at same indent as key
-				valueBytes, err = prettifyEdn(v, currentIndent+1, widthLimit)
-				if err != nil {
-					return nil, err
-				}
-				if first {
-					buf.WriteString(keyStr + "\n")
-					buf.WriteString(strings.Repeat(" ", currentIndent+1))
-					buf.Write(valueBytes)
-				} else {
-					buf.WriteString(",\n" + strings.Repeat(" ", currentIndent+1))
-					buf.WriteString(keyStr + "\n")
-					buf.WriteString(strings.Repeat(" ", currentIndent+1))
-					buf.Write(valueBytes)
-				}
+				buf.WriteString(",\n" + strings.Repeat(" ", currentIndent+1))
+				buf.WriteString(pair)
 			}
-			first = false
 		}
 		buf.WriteString("}")
 		return buf.Bytes(), nil
@@ -220,7 +194,13 @@ func prettifyEdn(value any, currentIndent int, widthLimit int) ([]byte, error) {
 }
 
 // EdnToJson converts EDN data to JSON format with configurable options.
+// If opts is nil, default options are used.
 func EdnToJson(data []byte, opts *JsonConvertOptions) ([]byte, error) {
+	// Handle nil options by creating default options
+	if opts == nil {
+		opts = &JsonConvertOptions{}
+	}
+	
 	var v any
 	if err := edn.Unmarshal(data, &v); err != nil {
 		return nil, ErrEdnUnmarshal
