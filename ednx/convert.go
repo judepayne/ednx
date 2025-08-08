@@ -78,6 +78,12 @@ func convertToEdnValue(v any, opts *EdnConvertOptions) any {
 			val[i] = convertToEdnValue(elem, opts)
 		}
 		return val
+	case float64:
+		// Convert whole number floats to integers
+		if val == float64(int(val)) {
+			return int(val)
+		}
+		return val
 	default:
 		return val
 	}
